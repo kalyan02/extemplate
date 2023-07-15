@@ -4,6 +4,9 @@ Forked from: https://github.com/dannyvankooten/extemplate with added support for
 
 Extemplate is a small wrapper package around [html/template](https://golang.org/pkg/html/template/) to allow for easy file-based template inheritance.
 
+Known issues:
+- tests fail on windows
+
 File: `templates/parent.tmpl`
 ```text
 <html>
