@@ -1,3 +1,3 @@
-module github.com/dannyvankooten/extemplate
+module github.com/kalyan02/extemplate
 
-go 1.16
+go 1.18

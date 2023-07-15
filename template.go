@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -23,6 +23,7 @@ var extendsRegex *regexp.Regexp
 type Extemplate struct {
 	shared    *template.Template
 	templates map[string]*template.Template
+	fs        fs.FS
 }
 
 type templatefile struct {
@@ -93,10 +94,22 @@ func (x *Extemplate) ExecuteTemplate(wr io.Writer, name string, data interface{}
 // If a template file has {{/* extends "other-file.tmpl" */}} as its first line it will parse that file for base templates.
 // Parsed templates are named relative to the given root directory
 func (x *Extemplate) ParseDir(root string, extensions []string) error {
-	var b []byte
-	var err error
+	x.fs = os.DirFS(root)
+	return x.parseFsDir(root, extensions)
+}
 
-	files, err := findTemplateFiles(root, extensions)
+// ParseFS walks the given fs.FS root and parses all files with any of the registered extensions.
+// Default extensions are .html and .tmpl
+// If a template file has {{/* extends "other-file.tmpl" */}} as its first line it will parse that file for base templates.
+// Parsed templates are named relative to the given root directory
+func (x *Extemplate) ParseFS(f fs.FS, root string, extensions []string) error {
+	x.fs = f
+	return x.parseFsDir(root, extensions)
+}
+
+func (x *Extemplate) parseFsDir(root string, extensions []string) error {
+
+	files, err := findTemplateFiles(x.fs, root, extensions)
 	if err != nil {
 		return err
 	}
@@ -139,7 +152,7 @@ func (x *Extemplate) ParseDir(root string, extensions []string) error {
 
 		// parse template files in reverse order (because childs should override parents)
 		for j := len(templateFiles) - 1; j >= 0; j-- {
-			b = files[templateFiles[j]].contents
+			b := files[templateFiles[j]].contents
 			_, err = tmpl.Parse(string(b))
 			if err != nil {
 				return err
@@ -151,7 +164,7 @@ func (x *Extemplate) ParseDir(root string, extensions []string) error {
 	return nil
 }
 
-func findTemplateFiles(root string, extensions []string) (map[string]*templatefile, error) {
+func findTemplateFiles(f fs.FS, root string, extensions []string) (map[string]*templatefile, error) {
 	var files = map[string]*templatefile{}
 	var exts = map[string]bool{}
 
@@ -169,9 +182,9 @@ func findTemplateFiles(root string, extensions []string) (map[string]*templatefi
 	}
 
 	// find all template files
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	err := fs.WalkDir(f, root, func(path string, info fs.DirEntry, err error) error {
 		// skip dirs as they can never be valid templates
-		if info == nil || info.IsDir() {
+		if info.IsDir() {
 			return nil
 		}
 
@@ -185,7 +198,8 @@ func findTemplateFiles(root string, extensions []string) (map[string]*templatefi
 		name := strings.TrimPrefix(path, root)
 
 		// read file into memory
-		contents, err := ioutil.ReadFile(path)
+
+		contents, err := fs.ReadFile(f, path)
 		if err != nil {
 			return err
 		}
