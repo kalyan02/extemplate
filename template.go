@@ -178,7 +178,7 @@ func findTemplateFiles(f fs.FS, root string, extensions []string) (map[string]*t
 	root = filepath.ToSlash(root)
 
 	// ensure root path has trailing separator
-	root = strings.TrimSuffix(root, "/") + "/"
+	root = strings.TrimSuffix(root, "/")
 
 	// create map of allowed extensions
 	for _, e := range extensions {
@@ -191,6 +191,8 @@ func findTemplateFiles(f fs.FS, root string, extensions []string) (map[string]*t
 		if info == nil || info.IsDir() {
 			return nil
 		}
+
+		fmt.Println(">", path)
 
 		// skip if extension not in list of allowed extensions
 		e := filepath.Ext(path)
