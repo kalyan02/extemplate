@@ -95,7 +95,7 @@ func (x *Extemplate) ExecuteTemplate(wr io.Writer, name string, data interface{}
 // Parsed templates are named relative to the given root directory
 func (x *Extemplate) ParseDir(root string, extensions []string) error {
 	x.fs = os.DirFS(root)
-	return x.parseFsDir(root, extensions)
+	return x.parseFsDir(".", extensions)
 }
 
 // ParseFS walks the given fs.FS root and parses all files with any of the registered extensions.
@@ -168,13 +168,15 @@ func findTemplateFiles(f fs.FS, root string, extensions []string) (map[string]*t
 	var files = map[string]*templatefile{}
 	var exts = map[string]bool{}
 
+	baseRoot := root
+
 	root = filepath.Clean(root)
 
 	// convert os speficic path into forward slashes
 	root = filepath.ToSlash(root)
 
 	// ensure root path has trailing separator
-	root = strings.TrimSuffix(root, "/") + "/"
+	root = strings.TrimSuffix(root, "/")
 
 	// create map of allowed extensions
 	for _, e := range extensions {
@@ -184,7 +186,7 @@ func findTemplateFiles(f fs.FS, root string, extensions []string) (map[string]*t
 	// find all template files
 	err := fs.WalkDir(f, root, func(path string, info fs.DirEntry, err error) error {
 		// skip dirs as they can never be valid templates
-		if info.IsDir() {
+		if info == nil || info.IsDir() {
 			return nil
 		}
 
@@ -195,10 +197,12 @@ func findTemplateFiles(f fs.FS, root string, extensions []string) (map[string]*t
 		}
 
 		path = filepath.ToSlash(path)
-		name := strings.TrimPrefix(path, root)
+		name, err := filepath.Rel(baseRoot, path)
+		if err != nil {
+			return err
+		}
 
 		// read file into memory
-
 		contents, err := fs.ReadFile(f, path)
 		if err != nil {
 			return err
