@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"io"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -110,6 +111,7 @@ func (x *Extemplate) ParseFS(f fs.FS, root string, extensions []string) error {
 func (x *Extemplate) parseFsDir(root string, extensions []string) error {
 
 	files, err := findTemplateFiles(x.fs, root, extensions)
+	log.Printf("Found %d template files", len(files))
 	if err != nil {
 		return err
 	}
@@ -176,7 +178,7 @@ func findTemplateFiles(f fs.FS, root string, extensions []string) (map[string]*t
 	root = filepath.ToSlash(root)
 
 	// ensure root path has trailing separator
-	root = strings.TrimSuffix(root, "/")
+	root = strings.TrimSuffix(root, "/") + "/"
 
 	// create map of allowed extensions
 	for _, e := range extensions {
